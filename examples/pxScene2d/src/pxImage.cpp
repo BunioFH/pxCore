@@ -154,12 +154,14 @@ float pxImage::getOnscreenHeight()
 void pxImage::draw() {
   //rtLogDebug("pxImage::draw() mw=%f mh=%f\n", mw, mh);
   static pxTextureRef nullMaskRef;
-  context.drawImage(0, 0, 
+
+  float black[4] = {0,0,0,ma};
+  context.drawImage(0, 0,
                     getOnscreenWidth(),
-                    getOnscreenHeight(), 
-                    getImageResource()->getTexture(), nullMaskRef, 
-                    false, NULL, mStretchX, mStretchY);
-  // Raise the priority if we're still waiting on the image download    
+                    getOnscreenHeight(),
+                    getImageResource()->getTexture(), nullMaskRef,
+                    false, black, mStretchX, mStretchY);
+  // Raise the priority if we're still waiting on the image download
 #if 0
   if (!imageLoaded && getImageResource()->isDownloadInProgress())
     getImageResource()->raiseDownloadPriority();
