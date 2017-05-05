@@ -220,12 +220,13 @@ AppSceneContext.prototype.runScriptInNewVMContext = function (code, uri, fromJar
       queryStringModule: require("querystring"),
       theNamedContext: "Sandbox: " + uri,
       Buffer: Buffer,
-      require: function (pkg) {
-        log.message(3, "old use of require not supported: " + pkg);
-        // TODO: remove
-        return requireIt(pkg);
-
-      },
+      require: require,
+//       function (pkg) {
+//         log.message(3, "old use of require not supported: " + pkg);
+//         // TODO: remove
+//         return requireIt(pkg);
+//
+//       },
       setTimeout: setTimeout,
       setInterval: setInterval,
       clearInterval: clearInterval,
