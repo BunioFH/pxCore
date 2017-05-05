@@ -15,31 +15,31 @@
 #include <time.h>
 #endif
 
-double  pxSeconds()
-{
+static inline double pxGetTime( const double mul = 1.0 ) {
 #ifndef USE_CGT
     timeval tv;
     gettimeofday(&tv, NULL);
-    return tv.tv_sec + ((double)tv.tv_usec/1000000);
+    return mul * tv.tv_sec + (mul * tv.tv_usec / 1000000.0);
 #else
     timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts.tv_sec + ((double)ts.tv_nsec/1000000000);
+    return mul * ts.tv_sec + (mul * ts.tv_nsec / 1000000000.0 );
 #endif
+}
+
+double  pxSeconds()
+{
+    return pxGetTime();
 }
 
 double pxMilliseconds()
 {
-    timeval tv;
-    gettimeofday(&tv, NULL);
-    return ((double)(tv.tv_sec * 1000) + ((double)tv.tv_usec/1000));
+    return pxGetTime( 1000.0 );
 }
 
 double  pxMicroseconds()
 {
-    timeval tv;
-    gettimeofday(&tv, NULL);
-    return (tv.tv_sec * 1000000) + tv.tv_usec;
+    return pxGetTime( 1000000.0 );
 }
 
 void pxSleepMS(unsigned long msToSleep)
