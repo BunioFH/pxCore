@@ -81,7 +81,7 @@ static void registry_handle_global(void *data, struct wl_registry *registry, uin
     displayRef dRef;
     if (strcmp(interface, wl_compositor_interface.name) == 0)
         dRef.getDisplay()->compositor = (struct wl_compositor*)wl_registry_bind(registry, name,
-            &wl_compositor_interface, 1 /*version*/);
+            &wl_compositor_interface, 3 /*version*/);
     else if (strcmp(interface, wl_shm_interface.name) == 0)
         dRef.getDisplay()->shm = (struct wl_shm*)wl_registry_bind(registry, name,
             &wl_shm_interface, 1/*version*/);
@@ -92,12 +92,12 @@ static void registry_handle_global(void *data, struct wl_registry *registry, uin
     {
         dRef.getDisplay()->seat = (struct wl_seat*)wl_registry_bind(registry, name,
             &wl_seat_interface, 1 /*version*/);
-        dRef.getDisplay()->pointer = (struct wl_pointer*)wl_seat_get_pointer(dRef.getDisplay()->seat);
-        wl_pointer_add_listener(dRef.getDisplay()->pointer, &displayRef::mWaylandPointerListener,
-            dRef.getDisplay());
-        dRef.getDisplay()->keyboard = (struct wl_keyboard*)wl_seat_get_keyboard(dRef.getDisplay()->seat);
-        wl_keyboard_add_listener(dRef.getDisplay()->keyboard, &displayRef::mWaylandKeyboardListener,
-            NULL);
+//         dRef.getDisplay()->pointer = (struct wl_pointer*)wl_seat_get_pointer(dRef.getDisplay()->seat);
+//         wl_pointer_add_listener(dRef.getDisplay()->pointer, &displayRef::mWaylandPointerListener,
+//             dRef.getDisplay());
+//         dRef.getDisplay()->keyboard = (struct wl_keyboard*)wl_seat_get_keyboard(dRef.getDisplay()->seat);
+//         wl_keyboard_add_listener(dRef.getDisplay()->keyboard, &displayRef::mWaylandKeyboardListener,
+//             NULL);
     }
 }
 
@@ -368,7 +368,7 @@ pxError displayRef::createWaylandDisplay()
 
 void displayRef::cleanupWaylandDisplay()
 {
-    wl_pointer_destroy(mDisplay->pointer);
+//     wl_pointer_destroy(mDisplay->pointer);
     wl_seat_destroy(mDisplay->seat);
     wl_shell_destroy(mDisplay->shell);
     wl_shm_destroy(mDisplay->shm);
