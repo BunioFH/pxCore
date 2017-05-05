@@ -16,6 +16,7 @@
 #include <fcntl.h> //for files
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 
 #define WAYLAND_EGL_BUFFER_SIZE 32
 #define WAYLAND_EGL_BUFFER_OPAQUE 0
@@ -28,6 +29,8 @@
 bool bShiftPressed = false;
 bool bAltPressed = false;
 bool bCtrlPressed = false;
+
+using namespace std;
 
 
 waylandDisplay* displayRef::mDisplay = NULL;
@@ -379,6 +382,13 @@ void displayRef::cleanupWaylandDisplay()
 }
 
 bool exitFlag = false;
+
+pxWindowNative::pxWindowNative() : mTimerFPS(0), mLastWidth(-1), mLastHeight(-1),
+    mResizeFlag(false), mLastAnimationTime(0.0), mVisible(false),
+    mWaylandSurface(NULL), mWaylandBuffer(), waylandBufferIndex(0)
+{
+}
+
 
 pxWindowNative::~pxWindowNative()
 {
@@ -873,7 +883,7 @@ void pxWindowNative::initializeEgl()
 
     waylandDisplay* display = mDisplayRef.getDisplay();
 
-    display->egl.dpy = eglGetDisplay(display->display);
+    display->egl.dpy = eglGetDisplay((EGLNativeDisplayType)display->display);
     assert(display->egl.dpy);
 
     ret = eglInitialize(display->egl.dpy, &major, &minor);

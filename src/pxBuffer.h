@@ -210,7 +210,7 @@ pxBuffer(): mPixelFormat(RT_DEFAULT_PIX), mBase(NULL), mWidth(0), mHeight(0), mS
     free(line); //cleanup
   }
 
-  virtual void swizzleTo(rtPixelFmt fmt) = 0;
+  virtual void swizzleTo(rtPixelFmt) { };
 
   rtPixelFmt mPixelFormat;
 
