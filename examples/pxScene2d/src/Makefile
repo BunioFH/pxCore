@@ -1,6 +1,7 @@
 
 UNAME_S := $(shell uname -s)
-HNAME_S := $(shell hostname)
+HNAME_S := raspberrypi
+#$(shell hostname)
 
 ifeq ($(UNAME_S),Darwin)
 all: pxscene pxscene.app
@@ -29,8 +30,8 @@ clean:
 	rm -rf pxscene.app
 
 ifeq ($(HNAME_S),raspberrypi)
-PX_PLATFORM=PX_PLATFORM_GENERIC_EGL
-PXLIBS=$(PXCOREDIR)/build/egl
+PX_PLATFORM=PX_PLATFORM_WAYLAND_EGL
+PXLIBS=$(PXCOREDIR)/build/wayland_egl
 TARGETINCLUDE= -I/opt/vc/include \
   -I/opt/vc/include/interface/vcos/pthreads \
   -I/opt/vc/include/interface/vmcs_host/linux
@@ -54,7 +55,7 @@ endif
 ifeq ($(PX_PLATFORM),PX_PLATFORM_GENERIC_DFB)
 EXTRA_COMPILER_FLAGS=-std=c++0x -D__STDC_LIMIT_MACROS
 else
-EXTRA_COMPILER_FLAGS=-std=c++11
+EXTRA_COMPILER_FLAGS=-std=c++11 -DMESA_EGL_NO_X11_HEADERS -DPX_PLATFORM_WAYLAND_EGL
 endif
 
 
@@ -111,19 +112,19 @@ ifeq ($(PX_PLATFORM),PX_PLATFORM_MAC)
 NODEINC=$(EXTDIR)/libnode-v6.9.0
 NODEDIR=$(EXTDIR)/libnode-v6.9.0
 NODE_V_6_9_DEFINES=-D_DARWIN_USE_64_BIT_INODE=1 -DNODE_ARCH="x64" -DNODE_WANT_INTERNALS=1 -DV8_DEPRECATION_WARNINGS= -DNODE_SHARED_MODE -DNODE_USE_V8_PLATFORM=1 -DNODE_HAVE_I18N_SUPPORT=1 -DNODE_HAVE_SMALL_ICU=1 -DHAVE_INSPECTOR=1 -DV8_INSPECTOR_USE_STL=1 -DV8_INSPECTOR_USE_OLD_STL=1 -DHAVE_OPENSSL=1 -DHAVE_DTRACE=1 -D__POSIX__ -DNODE_PLATFORM="darwin" -DUCONFIG_NO_TRANSLITERATION=1 -DUCONFIG_NO_SERVICE=1 -DUCONFIG_NO_REGULAR_EXPRESSIONS=1 -DU_ENABLE_DYLOAD=0 -DU_STATIC_IMPLEMENTATION=1 -DU_HAVE_STD_STRING=0 -DUCONFIG_NO_BREAK_ITERATION=0 -DUCONFIG_NO_LEGACY_CONVERSION=1 -DUCONFIG_NO_CONVERSION=1 -DHTTP_PARSER_STRICT=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
-PLATFORM_DEFINES=-DENABLE_DEBUG_MODE -DPNG_APNG_SUPPORTED
+PLATFORM_DEFINES=-DPNG_APNG_SUPPORTED
 else
 ifeq ($(PX_PLATFORM),PX_PLATFORM_GLUT)
 NODEINC=$(EXTDIR)/libnode-v6.9.0
 NODEDIR=$(EXTDIR)/libnode-v6.9.0
 NODE_V_6_9_DEFINES=-DENABLE_NODE_V_6_9 -DNODE_PLATFORM="linux" -DNODE_WANT_INTERNALS=1 -DV8_DEPRECATION_WARNINGS=1 -DNODE_SHARED_MODE -DNODE_USE_V8_PLATFORM=1 -DNODE_HAVE_I18N_SUPPORT=1 -DNODE_HAVE_SMALL_ICU=1 -DHAVE_INSPECTOR=1 -DV8_INSPECTOR_USE_STL=1 -DV8_INSPECTOR_USE_OLD_STL=1
-PLATFORM_DEFINES=-DENABLE_DEBUG_MODE -DENABLE_LIBJPEG_TURBO -DPNG_APNG_SUPPORTED
+PLATFORM_DEFINES=-DENABLE_LIBJPEG_TURBO -DPNG_APNG_SUPPORTED
 else
 ifeq ($(HNAME_S),raspberrypi)
 NODEINC=$(EXTDIR)/libnode-v6.9.0
 NODEDIR=$(EXTDIR)/libnode-v6.9.0
 NODE_V_6_9_DEFINES=-DENABLE_NODE_V_6_9 -DNODE_PLATFORM="linux" -DNODE_WANT_INTERNALS=1 -DV8_DEPRECATION_WARNINGS=1 -DNODE_SHARED_MODE -DNODE_USE_V8_PLATFORM=1 -DNODE_HAVE_I18N_SUPPORT=1 -DNODE_HAVE_SMALL_ICU=1 -DHAVE_INSPECTOR=1 -DV8_INSPECTOR_USE_STL=1 -DV8_INSPECTOR_USE_OLD_STL=1
-PLATFORM_DEFINES=-DENABLE_DEBUG_MODE -DPNG_APNG_SUPPORTED
+PLATFORM_DEFINES=-DPNG_APNG_SUPPORTED
 else
 NODEINC=$(EXTDIR)/libnode
 NODEDIR=$(EXTDIR)/libnode
@@ -137,22 +138,11 @@ ZLIB=$(EXTDIR)/zlib/
 
 SEARCH=\
   -Ilinux \
-  -I$(EXTDIR)/jpg \
-  -I$(EXTDIR)/curl/include \
-  -I$(EXTDIR)/ft/include \
-  -I$(EXTDIR)/png \
+  -I$(NODEPATH) \
   -I$(PXHDRS)\
-  -I$(ZLIB) \
+  $(shell pkg-config --cflags zlib libcurl libpng freetype2) \
   -I./ \
-  -I$(NODEINC)/src \
-  -I$(NODEINC)/deps/uv/include \
-  -I$(NODEINC)/deps/v8 \
-  -I$(NODEINC)/deps/debugger-agent/include \
-  -I$(NODEINC)/deps/v8/include \
-  -I$(NODEINC)/deps/cares/include \
-  -I$(EXTDIR)/westeros/external/install/include \
   -I$(EXTDIR)/westeros-stub \
-  -I$(EXTDIR)/libjpeg-turbo \
    $(TARGETINCLUDE)
 
 
@@ -169,18 +159,12 @@ endif
 #CXXFLAGS=-Wall -Wextra -g $(SEARCH) -DENABLE_GLUT -DRT_PLATFORM_LINUX -DPX_PLATFORM_GLUT
 
 
-LDPNG    = -L$(EXTDIR)/png/.libs -lpng16
+LDPNG    = -lpng16
 ifeq ($(UNAME_S),Darwin)
 LDJPG    = $(EXTDIR)/jpg/.libs/libjpeg.a
 else
-LDJPG    = -L$(EXTDIR)/jpg/.libs -ljpeg
+LDJPG    = -ljpeg
 endif
-LDFT     = -L$(EXTDIR)/ft/objs/.libs -lfreetype
-LDCURL   = -L$(EXTDIR)/curl/lib/.libs -lcurl
-LDZLIB   = -L$(EXTDIR)/zlib -lz
-
-LDNODE   = -L$(NODEDIR)/out/Release/obj.target
-LDNODEV8 = -L$(NODEDIR)/out/Release -L$(NODEDIR)/out/Release/obj.target/deps/v8/tools/gyp
 
 LDLIBJPEGTURBO = -L$(EXTDIR)/libjpeg-turbo/.libs/ -lturbojpeg
 
@@ -190,7 +174,7 @@ LDLIBJPEGTURBO = -L$(EXTDIR)/libjpeg-turbo/.libs/ -lturbojpeg
 LDWESTEROS = -L$(EXTDIR)/westeros/external/install/lib -lwesteros_compositor
 
 
-LDEXT   = $(LDPNG) $(LDJPG) $(LDFT) $(LDCURL) $(LDNODE) $(LDNODEV8) $(LDZLIB)
+LDEXT   = $(LDJPG) $(shell pkg-config --libs zlib libcurl libpng freetype2 openssl)
 ifeq ($(HAVE_WESTEROS),1)
 LDEXT += $(LDWESTEROS)
 endif
@@ -201,12 +185,13 @@ endif
 endif
 
 ifeq ($(UNAME_S),Darwin)
-LDFLAGS = -L$(PXLIBS) -lnode -lpxCore $(LDEXT) -ldl -lv8_libplatform -framework OpenGL -framework Cocoa -framework Foundation
+LDFLAGS = -L$(PXLIBS) -l:libnode.so.48 -lpxCore $(LDEXT) -ldl -framework OpenGL -framework Cocoa -framework Foundation
 else
 ifeq ($(HNAME_S),raspberrypi)
-LDFLAGS = -L$(PXLIBS) -lnode -lpxCore -lrtCore_s -pthread -L/opt/vc/lib/ -lbcm_host -lEGL -lGLESv2 $(LDEXT) -ldl -lrt -lv8_libplatform 
+LDFLAGS = -L$(PXLIBS) -l:libnode.so.48 -lpxCore -lrtCore_s -pthread -L/opt/vc/lib/ -lwayland-client -lwayland-egl -lEGL -lGLESv2 $(LDEXT) -ldl -lrt
+#LDFLAGS = -L$(PXLIBS) -l:libnode.so.48 -lpxCore -lrtCore_s -pthread -L/opt/vc/lib/ -lbcm_host -lEGL -lGLESv2 $(LDEXT) -ldl -lrt -lv8_libplatform
 else
-LDFLAGS = -L$(PXLIBS) -lnode -lpxCore -lrtCore_s -pthread -lglut -lGLEW -lGL $(LDEXT) -ldl -lrt -lv8_libplatform
+LDFLAGS = -L$(PXLIBS) -l:libnode.so.48 -lpxCore -lrtCore_s -pthread -lglut -lGLEW -lGL $(LDEXT) -ldl -lrt
 endif
 endif
 
@@ -360,7 +345,7 @@ PXSCENE_LIBS=-lpng16 -lnxpl -lGLESv2 -l$(LIBRTREMOTE) -luuid
 ifneq ($(DISABLE_WESTEROS),TRUE)
 PXSCENE_LIBS:=-lwesteros_compositor 
 endif
-PXSCENE_LIB_LINK_OPTIONS=-L$(PXCOREDIR)/build/egl -Wl,--whole-archive $(PXCOREDIR)/build/egl/libpxCore.a
+PXSCENE_LIB_LINK_OPTIONS=-L$(PXCOREDIR)/build/wayland_egl -Wl,--whole-archive $(PXCOREDIR)/build/wayland_egl/libpxCore.a
 ifeq ($(DISABLE_WAYLAND),TRUE)
 PXSCENE_LIB_DEFINES=-DPX_PLATFORM_GENERIC_EGL -DENABLE_PX_WAYLAND_RPC -DENABLE_MAX_TEXTURE_SIZE -DDISABLE_WAYLAND
 else
@@ -382,7 +367,7 @@ INC_DFB=-I/usr/local/include/directfb
 
 pxscene-dfb: CXXFLAGS_FULL = -fPIC -Wall -Wextra -g $(SEARCH) $(INC_DFB) -DRT_PLATFORM_LINUX -DPX_PLATFORM_X11 -DENABLE_RT_NODE -DRUNINMAIN -DENABLE_HTTP_CACHE -DENABLE_DFB 
 pxscene-dfb: $(OBJS_DFB) $(PXCOREDIR)/build/dfb/libpxCore.a 
-	$(CXX) $(OBJS_DFB) -lnode -lpxCore -pthread -L/usr/local/lib -ldirectfb $(LDEXT) -L$(PXCOREDIR)/build/dfb -lpxCore -ldl -lrt -lv8_libplatform -o pxscene
+	$(CXX) $(OBJS_DFB) -l:libnode.so.48 -lpxCore -pthread -L/usr/local/lib -ldirectfb $(LDEXT) -L$(PXCOREDIR)/build/dfb -lpxCore -ldl -lrt -o pxscene
 
 librtRemote.so:
 	$(MAKE) -C rpc/ librtRemote.so
@@ -396,19 +381,15 @@ cleansceneobj:
 cleanwaylandobj:
 	rm -f $(PXWAYLAND_LIB_OBJS)
 
-libpxscene-glut:
-	rm -rf $(OBJDIR)
 libpxscene-glut: CFLAGS_FULL = $(CFLAGS)
 #libpxscene-glut: CXXFLAGS_FULL =-Wno-attributes -Wall -Wextra -fpermissive -fPIC -g -DRT_PLATFORM_LINUX -DPX_PLATFORM_GLUT -DENABLE_RT_NODE -DRUNINMAIN -DBSTD_CPU_ENDIAN=BSTD_ENDIAN_LITTLE $(PXSCENE_EXTRA_DEFINES)
-#libpxscene-glut: LDFLAGS_FULL = $(LDEXT) -Wl,--no-whole-archive -lglut -lGLEW -lGL -lnode -pthread -ljpeg -lfreetype -lcurl $(LDNODE) $(LDNODEV8) -L./  
+#libpxscene-glut: LDFLAGS_FULL = $(LDEXT) -Wl,--no-whole-archive -lglut -lGLEW -lGL -l:libnode.so.48 -pthread -ljpeg -lfreetype -lcurl $(LDNODE) $(LDNODEV8) -L./
 libpxscene-glut: cleansceneobj $(PXSCENE_LIB_OBJS)  
 	$(AR) rc libpxscene.a $(PXSCENE_LIB_OBJS) 
 
-libpxscene-dfbwindow:
-	rm -rf $(OBJDIR)
 libpxscene-dfbwindow: CFLAGS_FULL = $(CFLAGS)
 libpxscene-dfbwindow: CXXFLAGS_FULL =-Wno-attributes -Wall -Wextra -fpermissive -fPIC $(PXSCENE_LIB_SEARCH) -g -DRT_PLATFORM_LINUX -DENABLE_DFB -DPX_PLATFORM_DFB_NON_X11 -DENABLE_RT_NODE -DENABLE_V8_HEAP_PARAMS -DRUNINMAIN -DENABLE_HTTP_CACHE -DBSTD_CPU_ENDIAN=BSTD_ENDIAN_LITTLE $(PXSCENE_EXTRA_DEFINES) -std=c++0x
-libpxscene-dfbwindow: LDFLAGS_FULL =$(PXSCENE_LIB_LINK_OPTIONS) -Wl,--no-whole-archive -L../../../../workRNG150/rootfs/usr/local/lib/ -lnode -pthread -ljpeg -lfreetype -lcurl $(PXSCENE_LIBS) $(LDNODE) $(LDNODEV8) -L./ $(PLATFORM_LIBS) -lpng15 -ldirectfb -ldirect -lfusion -lz -lssl -lcrypto -shared -o libpxscene.so.1.0
+libpxscene-dfbwindow: LDFLAGS_FULL =$(PXSCENE_LIB_LINK_OPTIONS) -Wl,--no-whole-archive -L../../../../workRNG150/rootfs/usr/local/lib/ -l:libnode.so.48 -pthread -ljpeg -lfreetype -lcurl $(PXSCENE_LIBS) $(LDNODE) $(LDNODEV8) -L./ $(PLATFORM_LIBS) -lpng15 -ldirectfb -ldirect -lfusion -lz -lssl -lcrypto -shared -o libpxscene.so.1.0
 libpxscene-dfbwindow: cleansceneobj $(PXSCENE_LIB_OBJS) 
 	$(CXX) $(PXSCENE_LIB_OBJS) $(LDFLAGS_FULL)
 	ln -sf libpxscene.so.1.0 libpxscene.so.1
@@ -416,7 +397,7 @@ libpxscene-dfbwindow: cleansceneobj $(PXSCENE_LIB_OBJS)
 
 pxscene-with-so-dfb: CFLAGS_FULL = $(CFLAGS)
 pxscene-with-so-dfb: CXXFLAGS_FULL =-Wno-attributes -Wall -Wextra -fpermissive -fPIC $(PXSCENE_LIB_SEARCH) -g -DRT_PLATFORM_LINUX -DENABLE_DFB -DPX_PLATFORM_DFB_NON_X11 -DENABLE_RT_NODE -DENABLE_V8_HEAP_PARAMS -DRUNINMAIN -DENABLE_HTTP_CACHE -DBSTD_CPU_ENDIAN=BSTD_ENDIAN_LITTLE $(PXSCENE_EXTRA_DEFINES) -std=c++0x
-pxscene-with-so-dfb: LDFLAGS_FULL =$(PXSCENE_LIB_LINK_OPTIONS) -Wl,--no-whole-archive -L../../../../workRNG150/rootfs/usr/local/lib/ -lnode -pthread -ljpeg -lfreetype -lcurl $(PXSCENE_LIBS) $(LDNODE) $(LDNODEV8) -L./ $(PLATFORM_LIBS) -lpng15 -ldirectfb -ldirect -lfusion -lz -lssl -lcrypto -lpxscene -L../../../build/dfb/ -lrtCore -o pxscene
+pxscene-with-so-dfb: LDFLAGS_FULL =$(PXSCENE_LIB_LINK_OPTIONS) -Wl,--no-whole-archive -L../../../../workRNG150/rootfs/usr/local/lib/ -l:libnode.so.48 -pthread -ljpeg -lfreetype -lcurl $(PXSCENE_LIBS) $(LDNODE) $(LDNODEV8) -L./ $(PLATFORM_LIBS) -lpng15 -ldirectfb -ldirect -lfusion -lz -lssl -lcrypto -lpxscene -L../../../build/dfb/ -lrtCore -o pxscene
 pxscene-with-so-dfb: cleansceneobj $(PXSCENE_LIB_OBJS) 
 	$(CXX) $(CXXFLAGS_FULL) pxScene.cpp $(LDFLAGS_FULL)
 
@@ -425,34 +406,26 @@ pxscene-with-so-dfb: cleansceneobj $(PXSCENE_LIB_OBJS)
 libpxscene.so-node-v6.9: PXSCENE_VERSION_DEFINES = $(PXSCENE_EXTRA_DEFINES) -DENABLE_NODE_V_6_9 -DNODE_PLATFORM="linux" -DNODE_WANT_INTERNALS=1 -DV8_DEPRECATION_WARNINGS=1 -DNODE_SHARED_MODE -DNODE_USE_V8_PLATFORM=1 -DNODE_HAVE_I18N_SUPPORT=1 -DNODE_HAVE_SMALL_ICU=1 -DHAVE_INSPECTOR=1 -DV8_INSPECTOR_USE_STL=1 -DV8_INSPECTOR_USE_OLD_STL=1
 libpxscene.so-node-v6.9: libpxscene.so
 
-libpxscene.so:
-	rm -rf $(OBJDIR)
 libpxscene.so: CFLAGS_FULL = $(CFLAGS)
 libpxscene.so: CXXFLAGS_FULL =-Wno-attributes -Wall -Wextra -fpermissive -fPIC $(PXSCENE_LIB_SEARCH) $(EXTRA_COMPILER_FLAGS) -g -DRT_PLATFORM_LINUX -DPX_NO_WINDOW $(PXSCENE_LIB_DEFINES) -DENABLE_RT_NODE -DENABLE_V8_HEAP_PARAMS -DENABLE_PX_SCENE_TEXTURE_USAGE_MONITORING -DRUNINMAIN -DENABLE_HTTP_CACHE -DBSTD_CPU_ENDIAN=BSTD_ENDIAN_LITTLE $(PXSCENE_EXTRA_DEFINES) $(PXSCENE_VERSION_DEFINES)
-libpxscene.so: LDFLAGS_FULL =$(PXSCENE_LIB_LINK_OPTIONS) -Wl,--no-whole-archive -lnode -pthread -ljpeg -lfreetype -lcurl $(PXSCENE_LIBS) $(LDNODE) $(LDNODEV8) -L./ -shared $(PLATFORM_LIBS) -o libpxscene.so.1.0  
+libpxscene.so: LDFLAGS_FULL =$(PXSCENE_LIB_LINK_OPTIONS) -Wl,--no-whole-archive -l:libnode.so.48 -pthread -ljpeg -lfreetype -lcurl $(PXSCENE_LIBS) $(LDNODE) $(LDNODEV8) -L./ -shared $(PLATFORM_LIBS) -o libpxscene.so.1.0
 libpxscene.so: cleansceneobj $(PXSCENE_LIB_OBJS) 
 	$(CXX) $(PXSCENE_LIB_OBJS) $(LDFLAGS_FULL)
 	ln -sf libpxscene.so.1.0 libpxscene.so.1
 	ln -sf libpxscene.so.1 libpxscene.so
 
-libpxscene.a:
-	rm -rf $(OBJDIR)
 libpxscene.a: CFLAGS_FULL = $(CFLAGS)
 libpxscene.a: PXSCENE_VERSION_DEFINES = $(PXSCENE_EXTRA_DEFINES) -DENABLE_NODE_V_6_9 -DNODE_PLATFORM="linux" -DNODE_WANT_INTERNALS=1 -DV8_DEPRECATION_WARNINGS=1 -DNODE_SHARED_MODE -DNODE_USE_V8_PLATFORM=1 -DNODE_HAVE_I18N_SUPPORT=1 -DNODE_HAVE_SMALL_ICU=1 -DHAVE_INSPECTOR=1 -DV8_INSPECTOR_USE_STL=1 -DV8_INSPECTOR_USE_OLD_STL=1
 libpxscene.a: CXXFLAGS_FULL =-Wno-attributes -Wall -Wextra -fpermissive -fPIC $(PXSCENE_LIB_SEARCH) $(EXTRA_COMPILER_FLAGS) -g -DRT_PLATFORM_LINUX -DPX_NO_WINDOW $(PXSCENE_LIB_DEFINES) -DENABLE_RT_NODE -DENABLE_V8_HEAP_PARAMS -DENABLE_PX_SCENE_TEXTURE_USAGE_MONITORING -DRUNINMAIN -DENABLE_HTTP_CACHE -DBSTD_CPU_ENDIAN=BSTD_ENDIAN_LITTLE $(PXSCENE_EXTRA_DEFINES) $(PXSCENE_VERSION_DEFINES)
-libpxscene.a: cleansceneobj $(PXSCENE_LIB_OBJS) 
+libpxscene.a: cleansceneobj $(PXSCENE_LIB_OBJS)
 	$(AR) rcs -o $@ $(PXSCENE_LIB_OBJS)
 
-libpxscene.a-dfb:
-	rm -rf $(OBJDIR)
 libpxscene.a-dfb: CFLAGS_FULL = $(CFLAGS)
 libpxscene.a-dfb: CXXFLAGS_FULL =-Wno-attributes -Wall -Wextra -fpermissive -fPIC $(PXSCENE_LIB_SEARCH) $(EXTRA_COMPILER_FLAGS) -g -DRT_PLATFORM_LINUX -DPX_NO_WINDOW $(PXSCENE_LIB_DEFINES) -DENABLE_RT_NODE -DENABLE_V8_HEAP_PARAMS -DENABLE_PX_SCENE_TEXTURE_USAGE_MONITORING -DRUNINMAIN -DENABLE_HTTP_CACHE -DBSTD_CPU_ENDIAN=BSTD_ENDIAN_LITTLE $(PXSCENE_EXTRA_DEFINES) $(PXSCENE_VERSION_DEFINES)
-libpxscene.a-dfb: LDFLAGS_FULL =$(PXSCENE_LIB_LINK_OPTIONS) -Wl,--no-whole-archive -pthread -ljpeg -lfreetype -lcurl $(PXSCENE_LIBS) $(LDNODE) $(LDNODEV8) -L./ -shared $(PLATFORM_LIBS)  
+libpxscene.a-dfb: LDFLAGS_FULL =$(PXSCENE_LIB_LINK_OPTIONS) -Wl,--no-whole-archive -pthread -ljpeg -lfreetype -lcurl $(PXSCENE_LIBS) $(LDNODE) $(LDNODEV8) -L./ -shared $(PLATFORM_LIBS)
 libpxscene.a-dfb: cleansceneobj $(PXSCENE_LIB_OBJS) 
 	$(AR) rcs -o libpxscene.a $(PXSCENE_LIB_OBJS)
 
-libpxwayland.so: 
-	rm -rf $(OBJDIR)
 libpxwayland.so: CFLAGS_FULL = $(CFLAGS)
 libpxwayland.so: CXXFLAGS_FULL =-Wno-attributes -Wall -Wextra -fpermissive -fPIC $(PXSCENE_LIB_SEARCH) $(EXTRA_COMPILER_FLAGS) -g -DRT_PLATFORM_LINUX -DPX_NO_WINDOW $(PXSCENE_LIB_DEFINES) -DRUNINMAIN -DENABLE_HTTP_CACHE -DBSTD_CPU_ENDIAN=BSTD_ENDIAN_LITTLE
 libpxwayland.so: LDFLAGS_FULL =$(PXSCENE_LIB_LINK_OPTIONS) -Wl,--no-whole-archive -pthread -ljpeg -lfreetype -lcurl $(PXSCENE_LIBS) -L./ -shared $(PLATFORM_LIBS) -o libpxwayland.so.1.0
