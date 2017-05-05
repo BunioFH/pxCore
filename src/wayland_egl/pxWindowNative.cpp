@@ -20,7 +20,7 @@
 
 #define WAYLAND_EGL_BUFFER_SIZE 32
 #define WAYLAND_EGL_BUFFER_OPAQUE 0
-#define WAYLAND_PX_CORE_FPS 30
+#define WAYLAND_PX_CORE_FPS 50
 
 #define MOD_SHIFT	0x01
 #define MOD_ALT		0x02
@@ -549,6 +549,15 @@ void pxWindowNative::runEventLoopOnce()
 }
 
 
+static uint64_t getMicroseconds() {
+    timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t acc = ts.tv_sec;
+    acc *= 1000 * 1000;
+    acc += ts.tv_nsec/1000;
+    return acc;
+}
+
 
 void pxWindowNative::runEventLoop()
 {
@@ -558,16 +567,37 @@ void pxWindowNative::runEventLoop()
     waylandDisplay* display = dRef.getDisplay();
     vector<pxWindowNative*> windowVector = pxWindowNative::getNativeWindows();
 
+    uint32_t offsets[ WAYLAND_PX_CORE_FPS ];
+    for( int i = 0; i < WAYLAND_PX_CORE_FPS; ++i )
+        offsets[ i ] = (i*1000000+WAYLAND_PX_CORE_FPS-1)/WAYLAND_PX_CORE_FPS;
+
+    int frameNo = 1;
+    uint64_t wakeUpBase = getMicroseconds();
+    int count = 0, lastCount = -1;
     while(!exitFlag)
     {
+        count++;
         vector<pxWindowNative*>::iterator i;
         for (i = windowVector.begin(); i < windowVector.end(); i++)
         {
-           pxWindowNative* w = (*i);
-           w->animateAndRender();
+            pxWindowNative* w = (*i);
+            w->animateAndRender();
         }
         wl_display_dispatch_pending(display->display);
-        usleep(32*1000);
+        uint64_t delay = getMicroseconds();
+        uint64_t nextWakeUp = wakeUpBase + offsets[ frameNo ];
+        while( delay > nextWakeUp ) {
+            frameNo++;
+            if( frameNo >= WAYLAND_PX_CORE_FPS ) {
+//                 fprintf(stderr,"%lldms %lldms %lldms, fps: %d\n",getMicroseconds()/1000,delay/1000,nextWakeUp/1000,count);
+                count = 0;
+                wakeUpBase += 1000000;
+                frameNo = 0;
+            }
+            nextWakeUp = wakeUpBase + offsets[ frameNo ];
+        }
+        delay = nextWakeUp - delay;
+        usleep( delay );
         //pxSleepMS(1000); // Breath
     }
 }
@@ -791,11 +821,11 @@ waylandBuffer* pxWindowNative::nextBuffer()
 
 void pxWindowNative::animateAndRender()
 {
-    static double lastAnimationTime = pxMilliseconds();
-    double currentAnimationTime = pxMilliseconds();
-    drawFrame(); 
+//     static double lastAnimationTime = pxMilliseconds();
+//     double currentAnimationTime = pxMilliseconds();
+    drawFrame();
 
-    double animationDelta = currentAnimationTime-lastAnimationTime;
+//     double animationDelta = currentAnimationTime-lastAnimationTime;
     if (mResizeFlag)
     {
         mResizeFlag = false;
@@ -803,16 +833,16 @@ void pxWindowNative::animateAndRender()
         invalidateRectInternal(NULL);
     }
 
-    if (mTimerFPS)
-    {
-        animationDelta = currentAnimationTime - getLastAnimationTime();
-
-        if (animationDelta > (1000/mTimerFPS))
-        {
+//     if (mTimerFPS)
+//     {
+//         animationDelta = currentAnimationTime - getLastAnimationTime();
+//
+//         if (animationDelta > (int)(1000/mTimerFPS))
+//         {
             onAnimationTimerInternal();
-            setLastAnimationTime(currentAnimationTime);
-        }
-    }
+//             setLastAnimationTime(currentAnimationTime);
+//         }
+//     }
 }
 
 void pxWindowNative::setLastAnimationTime(double time)
