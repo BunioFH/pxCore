@@ -606,6 +606,19 @@ std::string readFile(const char *file)
   return s;
 }
 
+static const std::string& getRootPath() {
+    static std::string rootPath;
+    if( rootPath.empty() ) {
+        std::string NODE_PATH = ::getenv("NODE_PATH");
+        size_t colon = NODE_PATH.find(":");
+        if( colon != std::string::npos )
+            rootPath = NODE_PATH.substr( 0, colon );
+        else
+            rootPath = NODE_PATH;
+    }
+    return rootPath;
+}
+
 rtObjectRef rtNodeContext::runFile(const char *file, const char* /*args = NULL*/)
 {
   if(file == NULL)
@@ -617,7 +630,8 @@ rtObjectRef rtNodeContext::runFile(const char *file, const char* /*args = NULL*/
 
   // Read the script file
   js_file   = file;
-  js_script = readFile(file);
+  std::string temp = getRootPath()+"/"+file;
+  js_script = readFile(temp.c_str());
 
   return runScript(js_script);
 }
@@ -942,20 +956,11 @@ rtNodeContextRef rtNode::createContext(bool ownThread)
 
     if(sandbox_path.empty()) // only once.
     {
-      const std::string NODE_PATH = ::getenv("NODE_PATH");
-
-      sandbox_path = NODE_PATH + "/" + SANDBOX_JS;
+      sandbox_path = SANDBOX_JS;
     }
 
     // Populate 'sandbox' vars in JS...
-    if(fileExists(sandbox_path.c_str()))
-    {
-      mRefContext->runFile(sandbox_path.c_str());
-    }
-    else
-    {
-      rtLogError("## ERROR:   Could not find \"%s\" ...", sandbox_path.c_str());
-    }
+    mRefContext->runFile(sandbox_path.c_str());
     // !CLF: TODO Why is ctxref being reassigned from the mRefContext already assigned?
     //ctxref = new rtNodeContext(mIsolate, mRefContext);
   }
