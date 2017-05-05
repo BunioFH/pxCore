@@ -1266,6 +1266,7 @@ public:
                         rtObjectRef);
 */
   rtMethod2ArgAndNoReturn("on", addListener, rtString, rtFunctionRef);
+  rtMethod1ArgAndNoReturn("setCustomAnimator", setCustomAnimator, rtFunctionRef);
   rtMethod2ArgAndNoReturn("delListener", delListener, rtString, rtFunctionRef);
 
   // TODO make this a property
@@ -1349,6 +1350,11 @@ public:
   rtError createWayland(rtObjectRef p, rtObjectRef& o);
 
   rtError clock(uint64_t & time);
+
+  rtError setCustomAnimator(const rtFunctionRef& f) {
+      mCustomAnimator = f;
+      return RT_OK;
+  }
 
   rtError addListener(rtString eventName, const rtFunctionRef& f)
   {
@@ -1497,6 +1503,7 @@ private:
   int32_t mPointerHotSpotY;
   #endif
   bool mPointerHidden;
+  rtFunctionRef mCustomAnimator;
 public:
   void hidePointer( bool hide )
   {
