@@ -277,15 +277,38 @@ void rtImageResource::loadResourceFromFile()
   pxOffscreen imageOffscreen;
   rtString status = "resolve";
   rtData d;
-  rtError loadImageSuccess = rtLoadFile(mUrl, d);
-  if (loadImageSuccess == RT_OK)
-  {
-    loadImageSuccess = pxLoadImage((const char *) d.data(), d.length(), imageOffscreen);
-  }
-  else
-  {
-    loadImageSuccess = RT_RESOURCE_NOT_FOUND;
-    rtLogError("Could not load image file %s.", mUrl.cString());
+  int i = 0;
+  rtError loadImageSuccess = RT_FAIL;
+  if( pxLoadImage(mUrl, imageOffscreen) == RT_OK ) {
+      loadImageSuccess = RT_OK;
+  } else if ( *((const char*)mUrl) != '/' ) {
+      static struct _node_path {
+          std::string d[10];
+          int         c;
+
+          _node_path() : c(0) {
+              const char *env = ::getenv("NODE_PATH");
+              const char *ptr = env, *last = env;
+              while( ( *ptr++ ) && ( c < 10 ) ) {
+                  if( ( *ptr == 0 ) || ( *ptr == ':' ) ) {
+                      d[c] = std::string( last, ptr );
+                      if( d[c][d[c].size()-1] != '/' )
+                          d[c] += "/";
+                      ++c;
+                      if( *ptr == 0 )
+                          break;
+                      last = ++ptr;
+                  }
+              }
+          }
+      } node_path;
+      for( ; i < node_path.c; ++i ) {
+          if (pxLoadImage((node_path.d[i] + (const char*)mUrl).c_str(), imageOffscreen) == RT_OK)
+          {
+              loadImageSuccess = RT_OK;
+              break;
+          }
+      }
   }
   if ( loadImageSuccess != RT_OK)
   {
