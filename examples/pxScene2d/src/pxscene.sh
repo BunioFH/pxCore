@@ -1,57 +1,56 @@
-#!/bin/bash
+#!/bin/sh
 
-#Get absolute path to this script
-THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+EMULATED="x86_64 i386"
+MACHINE="$(uname -m)"
+EMU_WIDTH=1280
+EMU_HEIGHT=720
 
-cd $THIS_DIR
+DIR="$(cd $(dirname $0) && pwd)"
+TRG="${1:-http://www.pxscene.org/examples/px-reference/gallery/picturepile.js}"
+PXD="$(cd ${DIR}/../../usr/share/pxscene && pwd)"
+NMD="$(cd ${DIR}/../../usr/lib/node_modules/ && pwd)"
+EXE="${PXD}/pxscene"
+APD="."
 
-externalDir=../external
-rtRemoteDir=../../../remote
-
-externalLibs=$externalDir/png/.libs/:$externalDir/jpg/.libs/:$externalDir/curl/lib/.libs/:$externalDir/ft/objs/.libs/:$externalDir/zlib:$externalDir/westeros/external/install/lib/:$externalDir/libjpeg-turbo/.libs/:rpc/:$rtRemoteDir/
-
-PathD=$externalLibs:$externalDir/libnode-v6.9.0/out/Debug/obj.target
-PathR=$externalLibs:$externalDir/libnode-v6.9.0/out/Release/obj.target
-
-export LD_LIBRARY_PATH=$PathR
-
-export NODE_PATH=.
-
-#export RT_LOG_LEVEL=info
-
-#valgrind integration
-#suppressions are enabled to ignore the errors not interested
-if [[ ! -z $ENABLE_VALGRIND ]] && [[ $ENABLE_VALGRIND -eq 1 ]]
-then
-if [ -z $VALGRINDLOGS ]
-then
-VALGRINDLOGS=valgrind_logs
+if [ -f "${TRG}" ]; then
+    APD=$(cd $(dirname ${TRG}) && pwd)
 fi
-echo "valgrind --tool=memcheck --log-file=$VALGRINDLOGS --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./pxscene $1 $2 $3 $4 $5 $6 $7"
-if [ -z $SUPPRESSIONS ]
-then
-valgrind --tool=memcheck --log-file=$VALGRINDLOGS --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./pxscene $1 $2 $3 $4 $5 $6 $7
+
+export EGL_PLATFORM=wayland
+export DBUS_SESSION_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
+export NODE_PATH="${PXD}:${NMD}:${APD}"
+export WAYLAND_DISPLAY=wayland-0
+export PXSCENE_REQUIRE_ENABLE_FILE_PATH=/tmp/
+export PXSCENE_ENABLE_CUSTOM_ANIMATOR=1
+
+touch /tmp/.pxsceneEnableRequire
+
+if [ "${EMULATOR}x" = "x" ]; then
+    EMULATOR="false"
+    for f in ${EMULATED}; do
+        if [ "${f}" = "${MACHINE}" ]; then
+            EMULATOR="true"
+            break
+        fi
+    done
+fi
+
+export EMULATOR="${EMULATOR}"
+
+if [ "${EMULATOR}" = "true" ]; then
+    echo "EMULATED"
+    if [ "$(pidof weston)x" = "x" ]; then
+       echo "WESTON"
+        echo -e "[shell]
+panel-location=none
+cursor-size=1" > /tmp/weston.ini
+        weston --width=${EMU_WIDTH} --height=${EMU_HEIGHT} --idle-time=0 --config=/tmp/weston.ini > /dev/null 2>&1 &
+    fi
+    export LD_LIBRARY_PATH="$(cd ${DIR}/../../usr/lib/ && pwd)"
 else
-valgrind --tool=memcheck --suppressions=$SUPPRESSIONS  --log-file=$VALGRINDLOGS --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./pxscene $1 $2 $3 $4 $5 $6 $7
+    export LD_PRELOAD="/usr/lib/libnexus.so:/usr/lib/libnxpl-weston.so.1.13.1:/usr/lib/libwayland-nxclient.so.0:/usr/lib/libwayland-egl.so.1:/usr/lib/libGLESv2.so:/usr/lib/libIARMBus.so.0:/usr/lib/libdshalcli.so:/usr/lib/libds.so"
+#    export LD_PRELOAD="/usr/lib/libnexus.so:/usr/lib/libnxpl-weston.so.1.13.1:/usr/lib/libwayland-egl.so.1:/usr/lib/libGLESv2.so:/usr/lib/libIARMBus.so.0:/usr/lib/libdshalcli.so:/usr/lib/libds.so"
 fi
-else
-./pxscene $1 $2 $3 $4 $5 $6 $7
-fi
-#To run pxscene as background process
-#./pxscene $1 $2 $3 $4 $5 $6 $7 < `tty` >> /var/tmp/pxscene.log 2>&1 &
 
-# Development stuff...
-#
+${EXE} ${TRG}
 
-#valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./pxscene $1 $2 $3 $4 $5 $6 $7
-#./pxscene $1 $2 $3 $4 $5 $6 $7
-
-#valgrind --tool=callgrind ./pxscene $1 $2
-
-# NOTE: (rough) Process Performance Timing
-#time ./pxscene  $1 $2 -R
-
-# NOTE:  To use GDB ... use the DEBUG .so path for libnode
-#gdb --args pxscene  $1 $2 $3 $4
-
-#strace -o trace.txt pxscene $1 $2 $3 $4 $5 $6 $7
